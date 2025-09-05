@@ -1,0 +1,13 @@
+
+# framing:
+#  - ascii  : 4 ASCII bytes like "0123"
+#  - binary : 4-byte unsigned int
+framing: binary
+endian: BE                  # BE or LE (only for binary framing)
+length_includes_header: true
+
+charset: EUC-KR             # or UTF-8
+normalize: true             # NFC normalization
+
+log_recv_hex: true
+log_send_hex: true

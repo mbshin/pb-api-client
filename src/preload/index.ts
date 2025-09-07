@@ -36,28 +36,30 @@ contextBridge.exposeInMainWorld('api', {
   readConfig: async (): Promise<ReadConfigResult> => {
     return ipcRenderer.invoke('config:read')
   },
+
+
   // TCP Connection methods
-  connectTCP: (host, port) => ipcRenderer.invoke('connect-tcp', { host, port }),
-  sendTCPData: (data, encoding) => ipcRenderer.invoke('send-tcp-data', { data, encoding }),
-  disconnectTCP: () => ipcRenderer.invoke('disconnect-tcp'),
-  getConnectionStatus: () => ipcRenderer.invoke('get-connection-status'),
-
-  // Event listeners
-  onTCPDataReceived: (callback) => {
-    ipcRenderer.on('tcp-data-received', (event, data) => callback(data));
-  },
-  onTCPConnectionClosed: (callback) => {
-    ipcRenderer.on('tcp-connection-closed', (event, data) => callback(data));
-  },
-  onOrderBytes: (callback) => {
-    ipcRenderer.on('order-bytes', (event, bytes) => callback(bytes));
-  },
-
-  // Remove listeners
-  removeAllListeners: (channel) => {
-    ipcRenderer.removeAllListeners(channel);
-  },
-
-  // Order sending
-  sendOrder: (order) => ipcRenderer.invoke('send-order', order),
+  connect: (host, port) => ipcRenderer.invoke('connect-tcp', { host, port }),
+  // sendTCPData: (data, encoding) => ipcRenderer.invoke('send-tcp-data', { data, encoding }),
+  // disconnectTCP: () => ipcRenderer.invoke('disconnect-tcp'),
+  // getConnectionStatus: () => ipcRenderer.invoke('get-connection-status'),
+  //
+  // // Event listeners
+  // onTCPDataReceived: (callback) => {
+  //   ipcRenderer.on('tcp-data-received', (event, data) => callback(data));
+  // },
+  // onTCPConnectionClosed: (callback) => {
+  //   ipcRenderer.on('tcp-connection-closed', (event, data) => callback(data));
+  // },
+  // onOrderBytes: (callback) => {
+  //   ipcRenderer.on('order-bytes', (event, bytes) => callback(bytes));
+  // },
+  //
+  // // Remove listeners
+  // removeAllListeners: (channel) => {
+  //   ipcRenderer.removeAllListeners(channel);
+  // },
+  //
+  // // Order sending
+  // sendOrder: (order) => ipcRenderer.invoke('send-order', order),
 })

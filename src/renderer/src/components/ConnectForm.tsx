@@ -1,23 +1,18 @@
 import React, { useState } from 'react'
 
 // reusable type
-type Status = 'Disconnected' | 'Connecting' | 'Connected'
+// type Status = 'Disconnected' | 'Connecting' | 'Connected'
 
-export default function ConnectForm() {
+export default function ConnectForm({ handleConnect, status }) {
   const [host, setHost] = useState<string>('localhost')
   const [orderPort, setOrderPort] = useState<string>('8080')
-  const [execPort, setExecPort] = useState<string>('8081')
-  const [status, setStatus] = useState<Status>('Disconnected')
+  // const [execPort, setExecPort] = useState<string>('8081')
+  // const [status, setStatus] = useState<Status>('Disconnected')
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    console.log('Connecting to', host, orderPort, execPort)
-
-    setStatus('Connecting')
-
-    setTimeout(() => {
-      setStatus('Connected')
-    }, 1000)
+    console.log('Connecting to', host, orderPort)
+    handleConnect(host, orderPort)
   }
 
   const statusColor =
@@ -38,7 +33,7 @@ export default function ConnectForm() {
       </div>
 
       {/* Form Section */}
-      <form onSubmit={handleSubmit} className="grid grid-cols-3 gap-3 items-end">
+      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3 items-end">
         {/* Host */}
         <div className="flex flex-col">
           <label htmlFor="host" className="text-xs font-medium text-gray-600 mb-1">
@@ -69,20 +64,20 @@ export default function ConnectForm() {
           />
         </div>
 
-        {/* Execution Port */}
-        <div className="flex flex-col">
-          <label htmlFor="execPort" className="text-xs font-medium text-gray-600 mb-1">
-            Execution Port
-          </label>
-          <input
-            id="execPort"
-            type="text"
-            value={execPort}
-            onChange={(e) => setExecPort(e.target.value)}
-            placeholder="8081"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
+        {/*/!* Execution Port *!/*/}
+        {/*<div className="flex flex-col">*/}
+        {/*  <label htmlFor="execPort" className="text-xs font-medium text-gray-600 mb-1">*/}
+        {/*    Execution Port*/}
+        {/*  </label>*/}
+        {/*  <input*/}
+        {/*    id="execPort"*/}
+        {/*    type="text"*/}
+        {/*    value={execPort}*/}
+        {/*    onChange={(e) => setExecPort(e.target.value)}*/}
+        {/*    placeholder="8081"*/}
+        {/*    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"*/}
+        {/*  />*/}
+        {/*</div>*/}
 
         {/* Submit Button (full width across 3 columns) */}
         <div className="col-span-3">

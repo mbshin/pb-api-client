@@ -1,31 +1,34 @@
 import { JSX, useEffect, useState } from 'react'
 import ConnectForm from '@renderer/components/ConnectForm'
-import MessageForm from '@renderer/components/MessageForm'
-import MessageLog from '@renderer/components/MessageLog'
+import { Status } from './types'
 
-type LoadState =
-  | { kind: 'idle' }
-  | { kind: 'loading' }
-  | { kind: 'error'; msg: string }
-  | { kind: 'ready'; cfg: string }
+// type LoadState =
+//   | { kind: 'idle' }
+//   | { kind: 'loading' }
+//   | { kind: 'error'; msg: string }
+//   | { kind: 'ready'; cfg: string }
+
 
 export default function App(): JSX.Element {
   // const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
 
   const [result, setResult] = useState('')
-  const [state, setState] = useState<LoadState>({ kind: 'idle' })
+  // const [status, setState] = useState<LoadState>({ kind: 'idle' })
+  const [orderStatus, setOrderStaus] = useState<Status>('Disconnected')
 
-  const [isConnected, setIsConnected] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  // const [isConnected, setIsConnected] = useState(false)
+  // const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     let mounted = true
     ;(async () => {
-      setState({ kind: 'loading' })
-      const res = await window.api.readConfig()
+      // setState({ kind: 'loading' })
+      // const res = await window.api.readConfig()
       if (!mounted) return
-      if (res.ok) setState({ kind: 'ready', cfg: res.data })
-      else setState({ kind: 'error', msg: res.error })
+      // if (res.ok) setState({ kind: 'ready', cfg: res.data })
+      // else setState({ kind: 'error', msg: res.error })
+
+      setOrderStaus('Disconnected')
     })()
     return () => {
       mounted = false
@@ -38,15 +41,27 @@ export default function App(): JSX.Element {
     setResult(res)
   }
 
-  const handleSend = (msg: string) => {
-    setIsLoading(true)
-    console.log('Sending message:', msg)
+  // const handleSend = (msg: string) => {
+  //   setIsLoading(true)
+  //   console.log('Sending message:', msg)
+  //
+  //   // Simulate async send
+  //   setTimeout(() => {
+  //     setIsLoading(false)
+  //     console.log('Message sent:', msg)
+  //   }, 1000)
+  // }
 
-    // Simulate async send
-    setTimeout(() => {
-      setIsLoading(false)
-      console.log('Message sent:', msg)
-    }, 1000)
+  const handleConnect = async (host: string, port: string): Promise<void> => {
+    try {
+      const result = await window.api?.connect(host, parseInt(port))
+      console.log(result)
+      setOrderStaus('Connected')
+    } catch (error) {
+      // This handles thrown errors or reject() from the main process
+      console.log(error)
+      setOrderStaus('Disconnected')
+    }
   }
 
   return (
@@ -55,7 +70,7 @@ export default function App(): JSX.Element {
         <div className="max-w-lg mx-auto mt-10 space-y-4">
           <button onClick={handleClick}>Load Config</button>
 
-          <ConnectForm />
+          <ConnectForm handleConnect={handleConnect} status={orderStatus} />
           {/*<MessageForm isConnected={isConnected} onSend={handleSend} isLoading={isLoading} />*/}
           {/*<MessageLog*/}
           {/*  messages={[*/}

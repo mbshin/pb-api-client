@@ -148,37 +148,20 @@ ipcMain.handle('ping', async (_event, msg) => {
 // TCP Client functionality
 let tcpClient: Socket
 
-ipcMain.handle('connect-tcp', async (event, { host, port }) => {
-  return new Promise((resolve, reject) => {
-    try {
+ipcMain.handle('connect-tcp', async (_event, { host, port }) => {
+  ipcMain.handle('connect-tcp', async (_event, { host, port }) => {
+    return new Promise((resolve, reject) => {
       tcpClient = new net.Socket()
 
       tcpClient.connect(port, host, () => {
         resolve({ success: true, message: `Connected to ${host}:${port}` })
       })
 
-      tcpClient.on('data', (data) => {
-        mainWindow.webContents.send('tcp-data-received', {
-          data: data.toString(),
-          timestamp: new Date().toISOString()
-        })
-      })
-
       tcpClient.on('error', (error) => {
         reject({ success: false, message: `Connection error: ${error.message}` })
       })
-
-      tcpClient.on('close', () => {
-        mainWindow.webContents.send('tcp-connection-closed', {
-          message: 'Connection closed',
-          timestamp: new Date().toISOString()
-        })
-      })
-    } catch (error) {
-      reject({ success: false, message: `Failed to create connection: ${error.message}` })
-    }
+    })
   })
-})
 
 ipcMain.handle('send-tcp-data', async (event, { data, encoding = 'utf8' }) => {
   return new Promise((resolve, reject) => {
@@ -272,18 +255,18 @@ ipcMain.handle('send-order', async (event, order) => {
   })
 })
 
-ipcMain.handle('koscom:connect', async () => {
-  await client!.connect()
-  return 'connected'
-})
-ipcMain.handle('koscom:disconnect', async () => {
-  client?.disconnect()
-  return 'disconnected'
-})
-
-ipcMain.handle('koscom:send', async (_e, type: MessageType, payload: Payload) => {
-  if (!client || !builder) throw new Error('Not ready')
-  const buf = builder.build(type, payload)
-  client.send(buf)
-  return buf.toString('hex')
-})
+// ipcMain.handle('koscom:connect', async () => {
+//   await client!.connect()
+//   return 'connected'
+// })
+// ipcMain.handle('koscom:disconnect', async () => {
+//   client?.disconnect()
+//   return 'disconnected'
+// })
+//
+// ipcMain.handle('koscom:send', async (_e, type: MessageType, payload: Payload) => {
+//   if (!client || !builder) throw new Error('Not ready')
+//   const buf = builder.build(type, payload)
+//   client.send(buf)
+//   return buf.toString('hex')
+// })

@@ -1,13 +1,21 @@
-import { JSX, useEffect, useState } from 'react'
+import { JSX, useEffect, useRef, useState } from 'react'
 import ConnectForm from '@renderer/components/ConnectForm'
 import { Status } from './types'
 import MessageForm from '@renderer/components/MessageForm'
+import MessageLog from '@renderer/components/MessageLog'
 
 // type LoadState =
 //   | { kind: 'idle' }
 //   | { kind: 'loading' }
 //   | { kind: 'error'; msg: string }
 //   | { kind: 'ready'; cfg: string }
+
+interface Message {
+  id: number
+  type: 'sent' | 'received'
+  text: string
+  timestamp: Date
+}
 
 
 export default function App(): JSX.Element {
@@ -18,29 +26,53 @@ export default function App(): JSX.Element {
   const [orderStatus, setOrderStaus] = useState<Status>('Disconnected')
 
   // const [isConnected, setIsConnected] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  // const [isLoading, setIsLoading] = useState(true)
+
+  const [messages, setMessages] = useState<
+    Message[]
+  >([])
 
   useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      // setState({ kind: 'loading' })
-      // const res = await window.api.readConfig()
-      if (!mounted) return
-      // if (res.ok) setState({ kind: 'ready', cfg: res.data })
-      // else setState({ kind: 'error', msg: res.error })
-
-      setIsLoading(true)
-      setOrderStaus('Disconnected')
-    })()
+    // const offStatus = window.api.onStatus((s) => {
+    //   setStatus(s.status)
+    //   setDetail(s.detail)
+    // })
+    const offData = window.api.onData((m) => {
+      console.log("here")
+      console.log(m)
+      addMessage(m.bytesAscii)
+      // pushMsg({
+      //   dir: 'in',
+      //   ascii: m.bytesAscii,
+      //   hex: m.bytesHex
+      // })
+    })
+    // const offClosed = window.api.onClosed(() => {
+    //   setStatus('Disconnected')
+    // })
     return () => {
-      mounted = false
+      // offStatus()
+      offData()
+      // offClosed()
     }
   }, [])
 
 
-  window.api?.onData((msg) => {
-    console.log('Received from TCP:', msg);
-  });
+  const nextId = useRef(0)
+
+  const addMessage = (text: string) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: nextId.current++,
+        type: 'received',
+        text: text,
+        timestamp: new Date()
+      }
+    ])
+  }
+
+
   // const handleClick = async (): Promise<void> => {
   //   // example: call Electron preload API
   //   const res = window.api?.ping()
@@ -71,7 +103,7 @@ export default function App(): JSX.Element {
   }
 
   const handleSend = async (data) => {
-    console.log("handle send")
+    console.log('handle send')
     console.log(data)
     const result = await window.api?.send(data)
     console.log(result)
@@ -83,21 +115,7 @@ export default function App(): JSX.Element {
         <div className="max-w-lg mx-auto mt-10 space-y-4">
           <ConnectForm handleConnect={handleConnect} status={orderStatus} />
           <MessageForm isConnected={true} onSend={handleSend} />
-          {/*<MessageLog*/}
-          {/*  messages={[*/}
-          {/*    {*/}
-          {/*      id: 1,*/}
-          {/*      type: 'sent',*/}
-          {/*      text: 'gjlsajglsajglsajglsagd',*/}
-          {/*      timestamp: new Date(Date.now() - 1000 * 60 * 5)*/}
-          {/*    },{*/}
-          {/*      id: 1,*/}
-          {/*      type: 'received',*/}
-          {/*      text: 'gjlsajglsajglsajglsagd',*/}
-          {/*      timestamp: new Date(Date.now() - 1000 * 60 * 5)*/}
-          {/*    }*/}
-          {/*  ]}*/}
-          {/*/>*/}
+          <MessageLog messages={messages} />
 
           {/*<pre>{JSON.stringify(state, null, 2)}</pre>*/}
           <pre>{result}</pre>

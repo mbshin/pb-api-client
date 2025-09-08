@@ -16,7 +16,7 @@ const arg = (name, def) => {
   return i !== -1 && argv[i + 1] ? argv[i + 1] : def;
 };
 
-const PORT = parseInt(arg('port', '9000'), 10);
+const PORT = parseInt(arg('port', '8080'), 10);
 const HOST = arg('host', '0.0.0.0');
 const IDLE_MS = parseInt(arg('idle', '0'), 10); // 0 = no idle timeout
 const FRAMED = !!env.FRAMED;

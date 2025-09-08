@@ -18,6 +18,50 @@ if (process.contextIsolated) {
     //    return  'pong'
     // },
     // })
+
+    contextBridge.exposeInMainWorld('api', {
+      ping: async () => {
+        return await ipcRenderer.invoke('ping', 'hello')
+        // console.log("res" + ipcRenderer.invoke("ping"))
+      },
+      readConfig: async (): Promise<ReadConfigResult> => {
+        return ipcRenderer.invoke('config:read')
+      },
+
+
+      // TCP Connection methods
+      connect: (host, port) => ipcRenderer.invoke('connect-tcp', { host, port }),
+      send: (data) => ipcRenderer.invoke('send-tcp-data', { data }),
+      onData(cb: (msg: { bytesHex: string; bytesAscii: string }) => void) {
+        console.log("here")
+        const listener = (_: any, data: any) => cb(data)
+
+        ipcRenderer.on('tcp:data', listener)
+
+        return () => ipcRenderer.removeListener('tcp:data', listener)
+      },  // sendTCPData: (data, encoding) => ipcRenderer.invoke('send-tcp-data', { data, encoding }),
+      // disconnectTCP: () => ipcRenderer.invoke('disconnect-tcp'),
+      // getConnectionStatus: () => ipcRenderer.invoke('get-connection-status'),
+      //
+      // // Event listeners
+      // onTCPDataReceived: (callback) => {
+      //   ipcRenderer.on('tcp-data-received', (event, data) => callback(data));
+      // },
+      // onTCPConnectionClosed: (callback) => {
+      //   ipcRenderer.on('tcp-connection-closed', (event, data) => callback(data));
+      // },
+      // onOrderBytes: (callback) => {
+      //   ipcRenderer.on('order-bytes', (event, bytes) => callback(bytes));
+      // },
+      //
+      // // Remove listeners
+      // removeAllListeners: (channel) => {
+      //   ipcRenderer.removeAllListeners(channel);
+      // },
+      //
+      // // Order sending
+      // sendOrder: (order) => ipcRenderer.invoke('send-order', order),
+    })
   } catch (error) {
     console.error(error)
   }
@@ -28,40 +72,4 @@ if (process.contextIsolated) {
   window.api = api
 }
 
-contextBridge.exposeInMainWorld('api', {
-  ping: async () => {
-    return await ipcRenderer.invoke('ping', 'hello')
-    // console.log("res" + ipcRenderer.invoke("ping"))
-  },
-  readConfig: async (): Promise<ReadConfigResult> => {
-    return ipcRenderer.invoke('config:read')
-  },
 
-
-  // TCP Connection methods
-  connect: (host, port) => ipcRenderer.invoke('connect-tcp', { host, port }),
-  send: (data) => ipcRenderer.invoke('send-tcp-data', { data }),
-  onData: (callback) => ipcRenderer.on('tcp-data', (_e, msg) => callback(msg)),
-  // sendTCPData: (data, encoding) => ipcRenderer.invoke('send-tcp-data', { data, encoding }),
-  // disconnectTCP: () => ipcRenderer.invoke('disconnect-tcp'),
-  // getConnectionStatus: () => ipcRenderer.invoke('get-connection-status'),
-  //
-  // // Event listeners
-  // onTCPDataReceived: (callback) => {
-  //   ipcRenderer.on('tcp-data-received', (event, data) => callback(data));
-  // },
-  // onTCPConnectionClosed: (callback) => {
-  //   ipcRenderer.on('tcp-connection-closed', (event, data) => callback(data));
-  // },
-  // onOrderBytes: (callback) => {
-  //   ipcRenderer.on('order-bytes', (event, bytes) => callback(bytes));
-  // },
-  //
-  // // Remove listeners
-  // removeAllListeners: (channel) => {
-  //   ipcRenderer.removeAllListeners(channel);
-  // },
-  //
-  // // Order sending
-  // sendOrder: (order) => ipcRenderer.invoke('send-order', order),
-})

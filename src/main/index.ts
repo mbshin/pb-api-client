@@ -12,35 +12,12 @@ import { AppConfig } from './types'
 import fs from 'node:fs'
 import * as fss from 'node:fs/promises'
 
-// let mainWindow
-
-function configPath(): string {
-  // In dev: read from repo's ./config/config.yaml
-  // In prod (packaged): place config next to app resources or under userData.
-  if (!app.isPackaged) {
-    return path.resolve(process.cwd(), 'config')
-  }
-  // Option A (read-only, bundled/next to resources):
-  //   Put your file next to process.resourcesPath (e.g., in extraResources during packaging)
-  //   return path.join(process.resourcesPath, 'config', 'config.yaml')
-
-  // Option B (mutable, user-overridable):
-  return path.join(app.getPath('userData'), 'config.yaml')
-}
-//
-// let win: BrowserWindow | null = null
-
-async function readYamlConfig(): Promise<any> {
-  const cfgDir = configPath()
-  const fp = path.join(cfgDir, 'config.yaml')
-
-  const raw = await fss.readFile(fp, 'utf-8')
-  return YAML.parse(raw)
-}
+let mainWindow: BrowserWindow | null = null
+let tcpClient: net.Socket | null = null
 
 function createWindow(): void {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
     show: false,
@@ -68,36 +45,6 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
-
-
-  ipcMain.handle('send-tcp-data', async (_event, { data, encoding = 'utf8' }) => {
-    return new Promise((resolve, reject) => {
-      if (!tcpClient || tcpClient.destroyed) {
-        reject({ success: false, message: 'No active TCP connection' })
-        return
-      }
-
-      tcpClient.on('data', (data) => {
-        // forward data to renderer
-        console.log(data.toString())
-        mainWindow.webContents.send('tcp-data', data.toString());
-      });
-
-      try {
-        tcpClient.write(data, encoding, (error) => {
-          if (error) {
-            reject({ success: false, message: `Failed to send data: ${error.message}` })
-          } else {
-            resolve({ success: true, message: 'Data sent successfully' })
-          }
-        })
-      } catch (error) {
-        reject({ success: false, message: `Error sending data: ${error.message}` })
-      }
-
-
-    })
-  })
 }
 
 // function getConfigDir(): string {
@@ -109,12 +56,12 @@ function createWindow(): void {
 //   return path.join(process.resourcesPath, 'config')
 // }
 
-function loadConfig(): AppConfig {
-  const cfgDir = configPath()
-  const p = path.join(cfgDir, 'app.yaml')
-  const yml = fs.readFileSync(p, 'utf-8')
-  return YAML.parse(yml) as AppConfig
-}
+// function loadConfig(): AppConfig {
+//   const cfgDir = configPath()
+//   const p = path.join(cfgDir, 'app.yaml')
+//   const yml = fs.readFileSync(p, 'utf-8')
+//   return YAML.parse(yml) as AppConfig
+// }
 
 // let client: TcpClient | null = null
 // let cfg: AppConfig
@@ -157,43 +104,82 @@ app.on('window-all-closed', () => {
   }
 })
 
-// ipcMain.handle("ping", async  () => {
-// console.log('pong11')
-// return "pong20"
-// });
-
-// ipcMain.handle('config:read', async () => {
-//   try {
-//     return { ok: true, data: await readYamlConfig() }
-//   } catch (err: any) {
-//     return { ok: false, error: err?.message ?? String(err) }
-//   }
-// })
-//
-// ipcMain.handle('ping', async (_event, msg) => {
-//   console.log(msg)
-//   return `pong: ${msg}`
-// })
-
-// TCP Client functionality
-let tcpClient: Socket
 
 
 ipcMain.handle('connect-tcp', async (_event, { host, port }) => {
-  return new Promise((resolve, reject) => {
-    tcpClient = new net.Socket()
 
-    tcpClient.connect(port, host, () => {
-      resolve({ success: true, message: `Connected to ${host}:${port}` })
+  if (tcpClient) {
+    try { tcpClient.destroy(); } catch {}
+    tcpClient = null
+  }
+
+  console.log("register handle")
+
+  return new Promise((resolve, reject) => {
+    const sock = new net.Socket()
+
+    sock.setNoDelay(true)
+
+    sock.connect(port, host, () => {
+      tcpClient = sock
+      // emitStatus('Connected', `${host}:${port}`)
+      resolve({ ok: true, message: `Connected to ${host}:${port}` })
     })
 
-    tcpClient.on('error', (error) => {
-      reject({ success: false, message: `Connection error: ${error.message}` })
+    sock.on('data', (data: Buffer) => {
+      console.log(data)
+      mainWindow?.webContents.send('tcp:data', {
+        bytesHex: data.toString('hex'),
+        bytesAscii: data.toString('utf8')
+      })
+    })
+
+    sock.on('close', () => {
+      // emitStatus('Disconnected')
+      if (tcpClient === sock) tcpClient = null
+      mainWindow?.webContents.send('tcp:closed', { reason: 'remote-closed' })
+    })
+
+    sock.on('error', (err) => {
+      // emitStatus('Disconnected', err.message)
+      if (tcpClient === sock) tcpClient = null
+      resolve({ ok: false, message: `Connect error: ${err.message}` })
     })
   })
 })
 
+ipcMain.handle('send-tcp-data', async (_event, { data, encoding = 'utf8' }) => {
+  return new Promise((resolve, reject) => {
+    if (!tcpClient || tcpClient.destroyed) {
+      reject({ success: false, message: 'No active TCP connection' })
+      return
+    }
 
+    try {
+      tcpClient.write(data, encoding, (error) => {
+        if (error) {
+          reject({ success: false, message: `Failed to send data: ${error.message}` })
+        } else {
+          resolve({ success: true, message: 'Data sent successfully' })
+        }
+      })
+    } catch (error) {
+      reject({ success: false, message: `Error sending data: ${error.message}` })
+    }
+
+
+  })
+})
+
+
+ipcMain.handle('tcp:disconnect', async () => {
+  if (tcpClient) {
+    try { tcpClient.end(); tcpClient.destroy(); } catch {}
+    tcpClient = null
+  }
+  // emitStatus('Disconnected')
+  return { ok: true }
+})
 
 
 // ipcMain.handle('disconnect-tcp', async () => {
@@ -282,3 +268,49 @@ ipcMain.handle('connect-tcp', async (_event, { host, port }) => {
 //   client.send(buf)
 //   return buf.toString('hex')
 // })
+
+// ipcMain.handle("ping", async  () => {
+// console.log('pong11')
+// return "pong20"
+// });
+
+// ipcMain.handle('config:read', async () => {
+//   try {
+//     return { ok: true, data: await readYamlConfig() }
+//   } catch (err: any) {
+//     return { ok: false, error: err?.message ?? String(err) }
+//   }
+// })
+//
+// ipcMain.handle('ping', async (_event, msg) => {
+//   console.log(msg)
+//   return `pong: ${msg}`
+// })
+
+// TCP Client functionality
+// let tcpClient: Socket
+
+
+// function configPath(): string {
+//   // In dev: read from repo's ./config/config.yaml
+//   // In prod (packaged): place config next to app resources or under userData.
+//   if (!app.isPackaged) {
+//     return path.resolve(process.cwd(), 'config')
+//   }
+//   // Option A (read-only, bundled/next to resources):
+//   //   Put your file next to process.resourcesPath (e.g., in extraResources during packaging)
+//   //   return path.join(process.resourcesPath, 'config', 'config.yaml')
+//
+//   // Option B (mutable, user-overridable):
+//   return path.join(app.getPath('userData'), 'config.yaml')
+// }
+// //
+// let win: BrowserWindow | null = null
+
+// nullasync function readYamlConfig(): Promise<any> {
+//   const cfgDir = configPath()
+//   const fp = path.join(cfgDir, 'config.yaml')
+//
+//   const raw = await fss.readFile(fp, 'utf-8')
+//   return YAML.parse(raw)
+// }

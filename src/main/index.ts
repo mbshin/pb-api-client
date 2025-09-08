@@ -12,7 +12,7 @@ import { AppConfig } from './types'
 import fs from 'node:fs'
 import * as fss from 'node:fs/promises'
 
-let mainWindow
+// let mainWindow
 
 function configPath(): string {
   // In dev: read from repo's ./config/config.yaml
@@ -116,14 +116,14 @@ function loadConfig(): AppConfig {
   return YAML.parse(yml) as AppConfig
 }
 
-let client: TcpClient | null = null
-let cfg: AppConfig
+// let client: TcpClient | null = null
+// let cfg: AppConfig
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
-  cfg = loadConfig()
-  client = new TcpClient(cfg)
+  // cfg = loadConfig()
+  // client = new TcpClient(cfg)
   // builder = new OrderBuilder(cfg)
 
   // Set app user model id for windows
@@ -162,18 +162,18 @@ app.on('window-all-closed', () => {
 // return "pong20"
 // });
 
-ipcMain.handle('config:read', async () => {
-  try {
-    return { ok: true, data: await readYamlConfig() }
-  } catch (err: any) {
-    return { ok: false, error: err?.message ?? String(err) }
-  }
-})
-
-ipcMain.handle('ping', async (_event, msg) => {
-  console.log(msg)
-  return `pong: ${msg}`
-})
+// ipcMain.handle('config:read', async () => {
+//   try {
+//     return { ok: true, data: await readYamlConfig() }
+//   } catch (err: any) {
+//     return { ok: false, error: err?.message ?? String(err) }
+//   }
+// })
+//
+// ipcMain.handle('ping', async (_event, msg) => {
+//   console.log(msg)
+//   return `pong: ${msg}`
+// })
 
 // TCP Client functionality
 let tcpClient: Socket
@@ -209,13 +209,13 @@ ipcMain.handle('connect-tcp', async (_event, { host, port }) => {
 //   })
 // })
 
-ipcMain.handle('get-connection-status', async () => {
-  return {
-    connected: tcpClient && !tcpClient.destroyed,
-    remoteAddress: tcpClient ? tcpClient.remoteAddress : null,
-    remotePort: tcpClient ? tcpClient.remotePort : null
-  }
-})
+// ipcMain.handle('get-connection-status', async () => {
+//   return {
+//     connected: tcpClient && !tcpClient.destroyed,
+//     remoteAddress: tcpClient ? tcpClient.remoteAddress : null,
+//     remotePort: tcpClient ? tcpClient.remotePort : null
+//   }
+// })
 
 // ipcMain.handle('send-order', async (event, order) => {
 //   // Serialize order to byte stream

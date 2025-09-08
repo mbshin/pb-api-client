@@ -148,22 +148,23 @@ ipcMain.handle('ping', async (_event, msg) => {
 // TCP Client functionality
 let tcpClient: Socket
 
+
 ipcMain.handle('connect-tcp', async (_event, { host, port }) => {
-  ipcMain.handle('connect-tcp', async (_event, { host, port }) => {
-    return new Promise((resolve, reject) => {
-      tcpClient = new net.Socket()
+  return new Promise((resolve, reject) => {
+    tcpClient = new net.Socket()
 
-      tcpClient.connect(port, host, () => {
-        resolve({ success: true, message: `Connected to ${host}:${port}` })
-      })
+    tcpClient.connect(port, host, () => {
+      resolve({ success: true, message: `Connected to ${host}:${port}` })
+    })
 
-      tcpClient.on('error', (error) => {
-        reject({ success: false, message: `Connection error: ${error.message}` })
-      })
+    tcpClient.on('error', (error) => {
+      reject({ success: false, message: `Connection error: ${error.message}` })
     })
   })
+})
 
-ipcMain.handle('send-tcp-data', async (event, { data, encoding = 'utf8' }) => {
+
+ipcMain.handle('send-tcp-data', async (_event, { data, encoding = 'utf8' }) => {
   return new Promise((resolve, reject) => {
     if (!tcpClient || tcpClient.destroyed) {
       reject({ success: false, message: 'No active TCP connection' })
@@ -184,18 +185,18 @@ ipcMain.handle('send-tcp-data', async (event, { data, encoding = 'utf8' }) => {
   })
 })
 
-ipcMain.handle('disconnect-tcp', async () => {
-  return new Promise((resolve) => {
-    if (tcpClient && !tcpClient.destroyed) {
-      tcpClient.end()
-      tcpClient.destroy()
-      tcpClient = null
-      resolve({ success: true, message: 'Disconnected successfully' })
-    } else {
-      resolve({ success: false, message: 'No active connection to disconnect' })
-    }
-  })
-})
+// ipcMain.handle('disconnect-tcp', async () => {
+//   return new Promise((resolve) => {
+//     if (tcpClient && !tcpClient.destroyed) {
+//       tcpClient.end()
+//       tcpClient.destroy()
+//       tcpClient = null
+//       resolve({ success: true, message: 'Disconnected successfully' })
+//     } else {
+//       resolve({ success: false, message: 'No active connection to disconnect' })
+//     }
+//   })
+// })
 
 ipcMain.handle('get-connection-status', async () => {
   return {
@@ -205,55 +206,55 @@ ipcMain.handle('get-connection-status', async () => {
   }
 })
 
-ipcMain.handle('send-order', async (event, order) => {
-  // Serialize order to byte stream
-  const orderIdBuf = Buffer.alloc(32, 0)
-  orderIdBuf.write(order.orderId, 'utf8')
-  const qtyBuf = Buffer.alloc(4)
-  qtyBuf.writeInt32BE(Number(order.qty))
-  const priceBuf = Buffer.alloc(8)
-  priceBuf.writeDoubleBE(Number(order.price))
-  const issueCodeBuf = Buffer.alloc(32, 0)
-  issueCodeBuf.write(order.issueCode, 'utf8')
-  const buffer = Buffer.concat([orderIdBuf, qtyBuf, priceBuf, issueCodeBuf])
+// ipcMain.handle('send-order', async (event, order) => {
+//   // Serialize order to byte stream
+//   const orderIdBuf = Buffer.alloc(32, 0)
+//   orderIdBuf.write(order.orderId, 'utf8')
+//   const qtyBuf = Buffer.alloc(4)
+//   qtyBuf.writeInt32BE(Number(order.qty))
+//   const priceBuf = Buffer.alloc(8)
+//   priceBuf.writeDoubleBE(Number(order.price))
+//   const issueCodeBuf = Buffer.alloc(32, 0)
+//   issueCodeBuf.write(order.issueCode, 'utf8')
+//   const buffer = Buffer.concat([orderIdBuf, qtyBuf, priceBuf, issueCodeBuf])
 
-  // Always send byte stream to renderer for log
-  mainWindow.webContents.send('order-bytes', buffer.toString('hex'))
+//   // Always send byte stream to renderer for log
+//   mainWindow.webContents.send('order-bytes', buffer.toString('hex'))
 
-  return new Promise((resolve, reject) => {
-    if (!tcpClient || tcpClient.destroyed) {
-      resolve({
-        success: false,
-        message: 'No active TCP connection',
-        buffer: buffer.toString('hex')
-      })
-      return
-    }
-    try {
-      tcpClient.write(buffer, (error) => {
-        if (error) {
-          resolve({
-            success: false,
-            message: `Failed to send order: ${error.message}`,
-            buffer: buffer.toString('hex')
-          })
-        } else {
-          resolve({
-            success: true,
-            message: 'Order sent successfully',
-            buffer: buffer.toString('hex')
-          })
-        }
-      })
-    } catch (error) {
-      resolve({
-        success: false,
-        message: `Error sending order: ${error.message}`,
-        buffer: buffer.toString('hex')
-      })
-    }
-  })
-})
+//   return new Promise((resolve, reject) => {
+//     if (!tcpClient || tcpClient.destroyed) {
+//       resolve({
+//         success: false,
+//         message: 'No active TCP connection',
+//         buffer: buffer.toString('hex')
+//       })
+//       return
+//     }
+//     try {
+//       tcpClient.write(buffer, (error) => {
+//         if (error) {
+//           resolve({
+//             success: false,
+//             message: `Failed to send order: ${error.message}`,
+//             buffer: buffer.toString('hex')
+//           })
+//         } else {
+//           resolve({
+//             success: true,
+//             message: 'Order sent successfully',
+//             buffer: buffer.toString('hex')
+//           })
+//         }
+//       })
+//     } catch (error) {
+//       resolve({
+//         success: false,
+//         message: `Error sending order: ${error.message}`,
+//         buffer: buffer.toString('hex')
+//       })
+//     }
+//   })
+// })
 
 // ipcMain.handle('koscom:connect', async () => {
 //   await client!.connect()
@@ -263,7 +264,7 @@ ipcMain.handle('send-order', async (event, order) => {
 //   client?.disconnect()
 //   return 'disconnected'
 // })
-//
+
 // ipcMain.handle('koscom:send', async (_e, type: MessageType, payload: Payload) => {
 //   if (!client || !builder) throw new Error('Not ready')
 //   const buf = builder.build(type, payload)

@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld('api', {
 
   // TCP Connection methods
   connect: (host, port) => ipcRenderer.invoke('connect-tcp', { host, port }),
+  send: (data) => ipcRenderer.invoke('send-tcp-data', { data }),
   // sendTCPData: (data, encoding) => ipcRenderer.invoke('send-tcp-data', { data, encoding }),
   // disconnectTCP: () => ipcRenderer.invoke('disconnect-tcp'),
   // getConnectionStatus: () => ipcRenderer.invoke('get-connection-status'),

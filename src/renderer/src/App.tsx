@@ -1,6 +1,7 @@
 import { JSX, useEffect, useState } from 'react'
 import ConnectForm from '@renderer/components/ConnectForm'
 import { Status } from './types'
+import MessageForm from '@renderer/components/MessageForm'
 
 // type LoadState =
 //   | { kind: 'idle' }
@@ -17,7 +18,7 @@ export default function App(): JSX.Element {
   const [orderStatus, setOrderStaus] = useState<Status>('Disconnected')
 
   // const [isConnected, setIsConnected] = useState(false)
-  // const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     let mounted = true
@@ -28,6 +29,7 @@ export default function App(): JSX.Element {
       // if (res.ok) setState({ kind: 'ready', cfg: res.data })
       // else setState({ kind: 'error', msg: res.error })
 
+      setIsLoading(true)
       setOrderStaus('Disconnected')
     })()
     return () => {
@@ -64,6 +66,13 @@ export default function App(): JSX.Element {
     }
   }
 
+  const handleSend = async (data) => {
+    console.log("handle send")
+    console.log(data)
+    const result = await window.api?.send(data)
+    console.log(result)
+  }
+
   return (
     <>
       <div className="min-h-screen bg-gray-50 text-gray-900 p-6">
@@ -71,7 +80,7 @@ export default function App(): JSX.Element {
           <button onClick={handleClick}>Load Config</button>
 
           <ConnectForm handleConnect={handleConnect} status={orderStatus} />
-          {/*<MessageForm isConnected={isConnected} onSend={handleSend} isLoading={isLoading} />*/}
+          <MessageForm isConnected={true} onSend={handleSend} />
           {/*<MessageLog*/}
           {/*  messages={[*/}
           {/*    {*/}

@@ -43,7 +43,7 @@ export default function MessageForm({ isConnected, onSend, isLoading = false }: 
 
         <button
           onClick={handleSend}
-          disabled={isLoading || !message.trim() || isConnected}
+          // disabled={isLoading || !message.trim() || isConnected}
           className={`w-full py-2 px-4 rounded-lg text-sm font-medium shadow
             ${
               isLoading || !message.trim()

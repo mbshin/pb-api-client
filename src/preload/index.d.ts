@@ -14,6 +14,7 @@ declare global {
       ping: () => string,
       readConfig: () => Promise<{ ok: true; data: any } | { ok: false; error: string }>
       connect : (host, port) => void,
+      send: (data) => Promise<{ ok: true; data: any } | { ok: false; error: string }>
     },
   }
 

@@ -68,6 +68,36 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+
+  ipcMain.handle('send-tcp-data', async (_event, { data, encoding = 'utf8' }) => {
+    return new Promise((resolve, reject) => {
+      if (!tcpClient || tcpClient.destroyed) {
+        reject({ success: false, message: 'No active TCP connection' })
+        return
+      }
+
+      tcpClient.on('data', (data) => {
+        // forward data to renderer
+        console.log(data.toString())
+        mainWindow.webContents.send('tcp-data', data.toString());
+      });
+
+      try {
+        tcpClient.write(data, encoding, (error) => {
+          if (error) {
+            reject({ success: false, message: `Failed to send data: ${error.message}` })
+          } else {
+            resolve({ success: true, message: 'Data sent successfully' })
+          }
+        })
+      } catch (error) {
+        reject({ success: false, message: `Error sending data: ${error.message}` })
+      }
+
+
+    })
+  })
 }
 
 // function getConfigDir(): string {
@@ -164,26 +194,7 @@ ipcMain.handle('connect-tcp', async (_event, { host, port }) => {
 })
 
 
-ipcMain.handle('send-tcp-data', async (_event, { data, encoding = 'utf8' }) => {
-  return new Promise((resolve, reject) => {
-    if (!tcpClient || tcpClient.destroyed) {
-      reject({ success: false, message: 'No active TCP connection' })
-      return
-    }
 
-    try {
-      tcpClient.write(data, encoding, (error) => {
-        if (error) {
-          reject({ success: false, message: `Failed to send data: ${error.message}` })
-        } else {
-          resolve({ success: true, message: 'Data sent successfully' })
-        }
-      })
-    } catch (error) {
-      reject({ success: false, message: `Error sending data: ${error.message}` })
-    }
-  })
-})
 
 // ipcMain.handle('disconnect-tcp', async () => {
 //   return new Promise((resolve) => {

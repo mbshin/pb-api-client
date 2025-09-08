@@ -37,11 +37,15 @@ export default function App(): JSX.Element {
     }
   }, [])
 
-  const handleClick = async (): Promise<void> => {
-    // example: call Electron preload API
-    const res = window.api?.ping()
-    setResult(res)
-  }
+
+  window.api?.onData((msg) => {
+    console.log('Received from TCP:', msg);
+  });
+  // const handleClick = async (): Promise<void> => {
+  //   // example: call Electron preload API
+  //   const res = window.api?.ping()
+  //   setResult(res)
+  // }
 
   // const handleSend = (msg: string) => {
   //   setIsLoading(true)
@@ -77,8 +81,6 @@ export default function App(): JSX.Element {
     <>
       <div className="min-h-screen bg-gray-50 text-gray-900 p-6">
         <div className="max-w-lg mx-auto mt-10 space-y-4">
-          <button onClick={handleClick}>Load Config</button>
-
           <ConnectForm handleConnect={handleConnect} status={orderStatus} />
           <MessageForm isConnected={true} onSend={handleSend} />
           {/*<MessageLog*/}

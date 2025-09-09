@@ -105,7 +105,8 @@ export default function App() {
             disabled={false}
             onSent={(type, payload) => {
               console.log('OrderForm built:', type, payload)
-              // here you decide: encode → send via socket → log hex
+
+              pushMsg({ dir: 'out', ascii: JSON.stringify(payload, null, 2) })
             }} />
 
           {/*<MessageLog messages={messages} />*/}

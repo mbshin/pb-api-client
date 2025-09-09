@@ -3,6 +3,7 @@ import ConnectForm from './components/ConnectForm'
 import LogPanel from '@renderer/components/LogPanel'
 import { Msg } from '@renderer/types'
 import MessageForm from '@renderer/components/MessageForm'
+import OrderForm from '@renderer/components/OrderFrom'
 // import LogPanel, { type Msg } from './components/LogPanel'
 
 type Status = 'Disconnected' | 'Connecting' | 'Connected'
@@ -98,6 +99,14 @@ export default function App() {
           <ConnectForm handleConnect={handleConnect} handleDisconnect={handleDisconnect} status={status} />
           <MessageForm isConnected={true} onSend={handleSend} />
           <LogPanel items={msgs} onClear={() => setMsgs([])} />
+
+          <OrderForm
+            // disabled={status !== 'Connected'}
+            disabled={false}
+            onSent={(type, payload) => {
+              console.log('OrderForm built:', type, payload)
+              // here you decide: encode → send via socket → log hex
+            }} />
 
           {/*<MessageLog messages={messages} />*/}
 

@@ -1,7 +1,5 @@
 import { Msg } from '@renderer/types'
 
-
-
 type Props = {
   items: Msg[]
   onClear?: () => void

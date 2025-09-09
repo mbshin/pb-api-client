@@ -96,9 +96,9 @@ export default function App() {
       <div className="min-h-screen bg-gray-50 text-gray-900 p-6">
         <div className="max-w-lg mx-auto mt-10 space-y-4">
           <ConnectForm handleConnect={handleConnect} handleDisconnect={handleDisconnect} status={status} />
-
-          <LogPanel items={msgs} onClear={() => setMsgs([])} />
           <MessageForm isConnected={true} onSend={handleSend} />
+          <LogPanel items={msgs} onClear={() => setMsgs([])} />
+
           {/*<MessageLog messages={messages} />*/}
 
           {/*<pre>{JSON.stringify(state, null, 2)}</pre>*/}

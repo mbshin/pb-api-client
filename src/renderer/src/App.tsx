@@ -4,6 +4,8 @@ import LogPanel from '@renderer/components/LogPanel'
 import { Msg } from '@renderer/types'
 import MessageForm from '@renderer/components/MessageForm'
 import OrderForm from '@renderer/components/OrderFrom'
+import TcpPanel from '@renderer/components/TcpPanel'
+import TcpPanelModern from '@renderer/components/TcpPanel'
 // import LogPanel, { type Msg } from './components/LogPanel'
 
 type Status = 'Disconnected' | 'Connecting' | 'Connected'
@@ -93,28 +95,42 @@ export default function App() {
   }
 
   return (
-    <>
-      <div className="min-h-screen bg-gray-50 text-gray-900 p-6">
-        <div className="max-w-lg mx-auto mt-10 space-y-4">
-          <ConnectForm handleConnect={handleConnect} handleDisconnect={handleDisconnect} status={status} />
-          <MessageForm isConnected={true} onSend={handleSend} />
-          <LogPanel items={msgs} onClear={() => setMsgs([])} />
 
-          <OrderForm
-            // disabled={status !== 'Connected'}
-            disabled={false}
-            onSent={(type, payload) => {
-              console.log('OrderForm built:', type, payload)
-
-              pushMsg({ dir: 'out', ascii: JSON.stringify(payload, null, 2) })
-            }} />
-
-          {/*<MessageLog messages={messages} />*/}
-
-          {/*<pre>{JSON.stringify(state, null, 2)}</pre>*/}
-          {/*<pre>{result}</pre>*/}
-        </div>
+    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 dark:from-gray-950 dark:to-gray-900 p-4 lg:p-6">
+      <div className="mx-auto max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <TcpPanelModern title="Order Port" defaultPort={8080} />
+        <TcpPanelModern title="Execution Port" defaultPort={8081} />
       </div>
-    </>
+    </div>
+    // <>
+    //   <div className="min-h-screen bg-gray-50 text-gray-900 p-6">
+    //     <div className="max-w-lg mx-auto mt-10 space-y-4">
+    //       <TcpPanel
+    //         title="Order Port"
+    //         defaultHost="127.0.0.1"
+    //         defaultPort={8080}
+    //         onAfterConnect={(h, p) => console.log('Order connected', h, p)}
+    //       />
+    //
+    //       <ConnectForm handleConnect={handleConnect} handleDisconnect={handleDisconnect} status={status} />
+    //       <MessageForm isConnected={true} onSend={handleSend} />
+    //       <LogPanel items={msgs} onClear={() => setMsgs([])} />
+    //
+    //       <OrderForm
+    //         // disabled={status !== 'Connected'}
+    //         disabled={false}
+    //         onSent={(type, payload) => {
+    //           console.log('OrderForm built:', type, payload)
+    //
+    //           pushMsg({ dir: 'out', ascii: JSON.stringify(payload, null, 2) })
+    //         }} />
+    //
+    //       {/*<MessageLog messages={messages} />*/}
+    //
+    //       {/*<pre>{JSON.stringify(state, null, 2)}</pre>*/}
+    //       {/*<pre>{result}</pre>*/}
+    //     </div>
+    //   </div>
+    // </>
   )
 }

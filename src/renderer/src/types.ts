@@ -7,13 +7,9 @@ export interface Message {
   timestamp: Date
 }
 
-export type Msg = {
-  id: string
-  dir: 'in' | 'out'
-  ascii?: string
-  hex?: string
-  ts: string
-}
+
+
+
 
 // type LoadState =
 //   | { kind: 'idle' }

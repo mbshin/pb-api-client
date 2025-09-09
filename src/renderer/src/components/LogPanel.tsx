@@ -1,4 +1,10 @@
-import { Msg } from '@renderer/types'
+export type Msg = {
+  id: string
+  dir: 'in' | 'out'
+  ascii?: string
+  hex?: string
+  ts: string
+}
 
 type Props = {
   items: Msg[]

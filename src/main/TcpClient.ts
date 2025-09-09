@@ -1,77 +1,112 @@
+// electron/TcpClient.ts
 import net from 'node:net'
-import { AppConfig } from './types.js'
+import { EventEmitter } from 'node:events'
 
-export class TcpClient {
-  private socket?: net.Socket
-  private cfg: AppConfig
-  private recvBuf: Buffer = Buffer.alloc(0)
-  private listeners: ((msg: Buffer) => void)[] = []
+export type TcpStatus = 'Disconnected' | 'Connecting' | 'Connected'
 
-  constructor(cfg: AppConfig) {
-    this.cfg = cfg
+export interface TcpDataEvent {
+  bytesHex: string
+  bytesAscii: string
+}
+
+export interface TcpStatusEvent {
+  status: TcpStatus
+  detail?: string
+}
+
+export interface TcpClosedEvent {
+  reason: string
+}
+
+type Events = {
+  status: (e: TcpStatusEvent) => void
+  data: (e: TcpDataEvent) => void
+  closed: (e: TcpClosedEvent) => void
+  error: (err: Error) => void
+}
+
+export class TcpClient extends EventEmitter {
+  private socket: net.Socket | null = null
+  private _status: TcpStatus = 'Disconnected'
+
+  constructor() {
+    super()
   }
 
-  connect(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (this.socket && !this.socket.destroyed) {
-        resolve()
-        return
-      }
-      this.socket = new net.Socket()
-      this.socket.once('error', reject)
-      this.socket.connect(this.cfg.port, this.cfg.host, () => {
-        this.socket?.off('error', reject)
-        this.socket?.on('data', (chunk) => this.onData(chunk))
-        resolve()
+  get status() {
+    return this._status
+  }
+
+  private setStatus(status: TcpStatus, detail?: string) {
+    this._status = status
+    this.emit('status', { status, detail })
+  }
+
+  async connect(host: string, port: number) {
+    if (this.socket) this.disconnect()
+
+    this.setStatus('Connecting', `${host}:${port}`)
+
+    return await new Promise<{ ok: boolean; message: string }>((resolve) => {
+      const sock = new net.Socket()
+      sock.setNoDelay(true)
+
+      sock.connect(port, host, () => {
+        this.socket = sock
+        this.setStatus('Connected', `${host}:${port}`)
+        resolve({ ok: true, message: `Connected to ${host}:${port}` })
+      })
+
+      sock.on('data', (data) => {
+        this.emit('data', {
+          bytesHex: data.toString('hex'),
+          bytesAscii: data.toString('utf8')
+        })
+      })
+
+      sock.on('close', () => {
+        this.setStatus('Disconnected')
+        if (this.socket === sock) this.socket = null
+        this.emit('closed', { reason: 'remote-closed' })
+      })
+
+      sock.on('error', (err) => {
+        this.setStatus('Disconnected', err.message)
+        if (this.socket === sock) this.socket = null
+        this.emit('error', err)
+        resolve({ ok: false, message: `Connect error: ${err.message}` })
       })
     })
   }
 
-  disconnect(): void {
-    this.socket?.destroy()
-    this.socket = undefined
-    this.recvBuf = Buffer.alloc(0)
-  }
-
-  onMessage(cb: (msg: Buffer) => void) {
-    this.listeners.push(cb)
-  }
-
-  send(buf: Buffer) {
-    if (!this.socket || this.socket.destroyed) throw new Error('Socket not connected')
-    if (this.cfg.log_send_hex) console.log('[SEND]', buf.toString('hex'))
-    this.socket.write(buf)
-  }
-
-  private onData(chunk: Buffer) {
-    if (this.cfg.log_recv_hex) console.log('[RECV]', chunk.toString('hex'))
-    this.recvBuf = Buffer.concat([this.recvBuf, chunk])
-
-    const be = (this.cfg.endian ?? 'BE') === 'BE'
-    const includeHdr = this.cfg.length_includes_header
-
-    while (true) {
-      if (this.recvBuf.length < 4) return
-
-      let len: number
-      if (this.cfg.framing === 'ascii') {
-        const asciiLen = this.recvBuf.subarray(0, 4).toString('ascii')
-        len = parseInt(asciiLen, 10)
-        if (Number.isNaN(len)) {
-          this.recvBuf = Buffer.alloc(0)
-          return
-        }
-      } else {
-        len = be ? this.recvBuf.readUInt32BE(0) : this.recvBuf.readUInt32LE(0)
-      }
-
-      const total = includeHdr ? len : 4 + len
-      if (this.recvBuf.length < total) return
-
-      const payloadLen = total - 4
-      const msg = this.recvBuf.subarray(4, 4 + payloadLen)
-      this.recvBuf = this.recvBuf.subarray(total)
-      this.listeners.forEach((cb) => cb(msg))
+  async send(mode: 'hex' | 'utf8', data: string) {
+    if (!this.socket) return { ok: false, message: 'Not connected' }
+    try {
+      const buf =
+        mode === 'hex'
+          ? Buffer.from(data.replace(/\s+/g, ''), 'hex')
+          : Buffer.from(data, 'utf8')
+      this.socket.write(buf)
+      return { ok: true, bytes: buf.length }
+    } catch (e: any) {
+      return { ok: false, message: e?.message ?? 'send failed' }
     }
   }
+
+  disconnect() {
+    if (this.socket) {
+      try { this.socket.end(); this.socket.destroy() } catch {}
+      this.socket = null
+    }
+    this.setStatus('Disconnected')
+    this.emit('closed', { reason: 'local-disconnect' })
+  }
+}
+
+// Type-safe on/emit helpers
+export interface TcpClient {
+  on<U extends keyof Events>(event: U, listener: Events[U]): this
+  once<U extends keyof Events>(event: U, listener: Events[U]): this
+  off<U extends keyof Events>(event: U, listener: Events[U]): this
+  emit<U extends keyof Events>(event: U, ...args: Parameters<Events[U]>): boolean
 }

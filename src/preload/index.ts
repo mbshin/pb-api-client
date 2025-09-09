@@ -1,75 +1,47 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { electronAPI } from '@electron-toolkit/preload'
 
-// Custom APIs for renderer
-const api = {}
+type Status = 'Disconnected' | 'Connecting' | 'Connected'
+type OutMode = 'hex' | 'utf8'
 
-// Use `contextBridge` APIs to expose Electron APIs to
-// renderer only if context isolation is enabled, otherwise
-// just add to the DOM global.
-if (process.contextIsolated) {
-  try {
-    contextBridge.exposeInMainWorld('electron', electronAPI)
-    //     contextBridge.exposeInMainWorld('api', {
-    //   ping: () => {
+export type RenderTcp = {
+  create(): Promise<{ ok: boolean; id?: number; message?: string }>
+  connect(id: number, host: string, port: number): Promise<any>
+  send(id: number, mode: OutMode, data: string): Promise<any>
+  disconnect(id: number): Promise<any>
+  destroy(id: number): Promise<any>
 
-    //     console.log("ping1")
-    //       ipcRenderer.invoke("ping")
-    //    return  'pong'
-    // },
-    // })
-
-    contextBridge.exposeInMainWorld('api', {
-      ping: async () => {
-        return await ipcRenderer.invoke('ping', 'hello')
-        // console.log("res" + ipcRenderer.invoke("ping"))
-      },
-      readConfig: async (): Promise<ReadConfigResult> => {
-        return ipcRenderer.invoke('config:read')
-      },
-
-
-      // TCP Connection methods
-      connect: (host, port) => ipcRenderer.invoke('connect-tcp', { host, port }),
-      send: (data) => ipcRenderer.invoke('send-tcp-data', { data }),
-      onData(cb: (msg: { bytesHex: string; bytesAscii: string }) => void) {
-        console.log("here")
-        const listener = (_: any, data: any) => cb(data)
-
-        ipcRenderer.on('tcp:data', listener)
-
-        return () => ipcRenderer.removeListener('tcp:data', listener)
-      },  // sendTCPData: (data, encoding) => ipcRenderer.invoke('send-tcp-data', { data, encoding }),
-      // disconnectTCP: () => ipcRenderer.invoke('disconnect-tcp'),
-      // getConnectionStatus: () => ipcRenderer.invoke('get-connection-status'),
-      //
-      // // Event listeners
-      // onTCPDataReceived: (callback) => {
-      //   ipcRenderer.on('tcp-data-received', (event, data) => callback(data));
-      // },
-      // onTCPConnectionClosed: (callback) => {
-      //   ipcRenderer.on('tcp-connection-closed', (event, data) => callback(data));
-      // },
-      // onOrderBytes: (callback) => {
-      //   ipcRenderer.on('order-bytes', (event, bytes) => callback(bytes));
-      // },
-      //
-      // // Remove listeners
-      // removeAllListeners: (channel) => {
-      //   ipcRenderer.removeAllListeners(channel);
-      // },
-      //
-      // // Order sending
-      // sendOrder: (order) => ipcRenderer.invoke('send-order', order),
-    })
-  } catch (error) {
-    console.error(error)
-  }
-} else {
-  // @ts-ignore (define in dts)
-  window.electron = electronAPI
-  // @ts-ignore (define in dts)
-  window.api = api
+  // event channels are namespaced by id (e.g., tcp:3:data)
+  onStatus(id: number, cb: (e: { status: Status; detail?: string }) => void): () => void
+  onData(id: number, cb: (e: { bytesHex: string; bytesAscii: string }) => void): () => void
+  onClosed(id: number, cb: (e: { reason: string }) => void): () => void
 }
 
+const api: RenderTcp = {
+  create: () => ipcRenderer.invoke('tcp:create'),
+  connect: (id, host, port) => ipcRenderer.invoke('tcp:connect', { id, host, port }),
+  send: (id, mode, data) => ipcRenderer.invoke('tcp:send', { id, mode, data }),
+  disconnect: (id) => ipcRenderer.invoke('tcp:disconnect', { id }),
+  destroy: (id) => ipcRenderer.invoke('tcp:destroy', { id }),
 
+  onStatus(id, cb) {
+    const ch = `tcp:${id}:status`
+    const listener = (_: any, e: any) => cb(e)
+    ipcRenderer.on(ch, listener)
+    return () => ipcRenderer.removeListener(ch, listener)
+  },
+  onData(id, cb) {
+    const ch = `tcp:${id}:data`
+    const listener = (_: any, e: any) => cb(e)
+    ipcRenderer.on(ch, listener)
+    return () => ipcRenderer.removeListener(ch, listener)
+  },
+  onClosed(id, cb) {
+    const ch = `tcp:${id}:closed`
+    const listener = (_: any, e: any) => cb(e)
+    ipcRenderer.on(ch, listener)
+    return () => ipcRenderer.removeListener(ch, listener)
+  }
+}
+
+contextBridge.exposeInMainWorld('tcp', api)
+export type PreloadTcpApi = typeof api

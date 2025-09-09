@@ -2,18 +2,12 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-
-import * as path from 'node:path'
-import YAML from 'yaml'
-import net from 'net'
-import { Socket } from 'node:net'
 import { TcpClient } from './TcpClient'
-import { AppConfig } from './types'
-import fs from 'node:fs'
-import * as fss from 'node:fs/promises'
+import { TcpManager } from './TcpManager'
+
 
 let mainWindow: BrowserWindow | null = null
-let tcpClient: net.Socket | null = null
+const tcpManager = new TcpManager()
 
 function createWindow(): void {
   // Create the browser window.
@@ -47,24 +41,7 @@ function createWindow(): void {
   }
 }
 
-// function getConfigDir(): string {
-//   if (process.env.VITE_DEV_SERVER_URL) {
-//     // Development mode - load from project directory
-//     return path.join(process.cwd(), 'config')
-//   }
-//   // Production mode - load from resources
-//   return path.join(process.resourcesPath, 'config')
-// }
 
-// function loadConfig(): AppConfig {
-//   const cfgDir = configPath()
-//   const p = path.join(cfgDir, 'app.yaml')
-//   const yml = fs.readFileSync(p, 'utf-8')
-//   return YAML.parse(yml) as AppConfig
-// }
-
-// let client: TcpClient | null = null
-// let cfg: AppConfig
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
@@ -84,7 +61,7 @@ app.whenReady().then(() => {
   })
 
   // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
+  // ipcMain.on('ping', () => console.log('pong'))
 
   createWindow()
 
@@ -104,83 +81,125 @@ app.on('window-all-closed', () => {
   }
 })
 
+/** Helper: wire one TcpClient to a specific BrowserWindow */
+function pipeTcpToWindow(win: BrowserWindow, client: TcpClient, channelPrefix = 'tcp') {
+  client.on('status', (e) => win.webContents.send(`${channelPrefix}:status`, e))
+  client.on('data', (e) => win.webContents.send(`${channelPrefix}:data`, e))
+  client.on('closed', (e) => win.webContents.send(`${channelPrefix}:closed`, e))
+  client.on('error', (err) =>
+    win.webContents.send(`${channelPrefix}:status`, { status: 'Disconnected', detail: err.message })
+  )
+}
 
-
-ipcMain.handle('connect-tcp', async (_event, { host, port }) => {
-
-  if (tcpClient) {
-    try { tcpClient.destroy(); } catch {}
-    tcpClient = null
-  }
-
-  console.log("register handle")
-
-  return new Promise((resolve, reject) => {
-    const sock = new net.Socket()
-
-    sock.setNoDelay(true)
-
-    sock.connect(port, host, () => {
-      tcpClient = sock
-      // emitStatus('Connected', `${host}:${port}`)
-      resolve({ ok: true, message: `Connected to ${host}:${port}` })
-    })
-
-    sock.on('data', (data: Buffer) => {
-      console.log(data)
-      mainWindow?.webContents.send('tcp:data', {
-        bytesHex: data.toString('hex'),
-        bytesAscii: data.toString('utf8')
-      })
-    })
-
-    sock.on('close', () => {
-      // emitStatus('Disconnected')
-      if (tcpClient === sock) tcpClient = null
-      mainWindow?.webContents.send('tcp:closed', { reason: 'remote-closed' })
-    })
-
-    sock.on('error', (err) => {
-      // emitStatus('Disconnected', err.message)
-      if (tcpClient === sock) tcpClient = null
-      resolve({ ok: false, message: `Connect error: ${err.message}` })
-    })
-  })
+// IPC API
+ipcMain.handle('tcp:create', async (evt) => {
+  const win = BrowserWindow.fromWebContents(evt.sender)
+  if (!win) return { ok: false, message: 'No window' }
+  const { id, client } = tcpManager.create()
+  pipeTcpToWindow(win, client, `tcp:${id}`)
+  return { ok: true, id }
 })
 
-ipcMain.handle('send-tcp-data', async (_event, { data, encoding = 'utf8' }) => {
-  return new Promise((resolve, reject) => {
-    if (!tcpClient || tcpClient.destroyed) {
-      reject({ success: false, message: 'No active TCP connection' })
-      return
-    }
-
-    try {
-      tcpClient.write(data, encoding, (error) => {
-        if (error) {
-          reject({ success: false, message: `Failed to send data: ${error.message}` })
-        } else {
-          resolve({ success: true, message: 'Data sent successfully' })
-        }
-      })
-    } catch (error) {
-      reject({ success: false, message: `Error sending data: ${error.message}` })
-    }
-
-
-  })
+ipcMain.handle('tcp:connect', async (_evt, { id, host, port }) => {
+  const c = tcpManager.get(id)
+  if (!c) return { ok: false, message: 'Invalid id' }
+  return c.connect(host, port)
 })
 
+ipcMain.handle('tcp:send', async (_evt, { id, mode, data }) => {
+  const c = tcpManager.get(id)
+  if (!c) return { ok: false, message: 'Invalid id' }
+  return c.send(mode, data)
+})
 
-ipcMain.handle('tcp:disconnect', async () => {
-  if (tcpClient) {
-    try { tcpClient.end(); tcpClient.destroy(); } catch {}
-    tcpClient = null
-  }
-  // emitStatus('Disconnected')
+ipcMain.handle('tcp:disconnect', async (_evt, { id }) => {
+  const c = tcpManager.get(id)
+  if (!c) return { ok: true }
+  c.disconnect()
   return { ok: true }
 })
 
+ipcMain.handle('tcp:destroy', async (_evt, { id }) => {
+  tcpManager.destroy(id)
+  return { ok: true }
+})
+
+
+// ipcMain.handle('connect-tcp', async (_event, { host, port }) => {
+//
+//   if (tcpClient) {
+//     try { tcpClient.destroy(); } catch {}
+//     tcpClient = null
+//   }
+//
+//   console.log("register handle")
+//
+//   return new Promise((resolve, reject) => {
+//     const sock = new net.Socket()
+//
+//     sock.setNoDelay(true)
+//
+//     sock.connect(port, host, () => {
+//       tcpClient = sock
+//       // emitStatus('Connected', `${host}:${port}`)
+//       resolve({ ok: true, message: `Connected to ${host}:${port}` })
+//     })
+//
+//     sock.on('data', (data: Buffer) => {
+//       console.log(data)
+//       mainWindow?.webContents.send('tcp:data', {
+//         bytesHex: data.toString('hex'),
+//         bytesAscii: data.toString('utf8')
+//       })
+//     })
+//
+//     sock.on('close', () => {
+//       // emitStatus('Disconnected')
+//       if (tcpClient === sock) tcpClient = null
+//       mainWindow?.webContents.send('tcp:closed', { reason: 'remote-closed' })
+//     })
+//
+//     sock.on('error', (err) => {
+//       // emitStatus('Disconnected', err.message)
+//       if (tcpClient === sock) tcpClient = null
+//       resolve({ ok: false, message: `Connect error: ${err.message}` })
+//     })
+//   })
+// })
+//
+// ipcMain.handle('send-tcp-data', async (_event, { data, encoding = 'utf8' }) => {
+//   return new Promise((resolve, reject) => {
+//     if (!tcpClient || tcpClient.destroyed) {
+//       reject({ success: false, message: 'No active TCP connection' })
+//       return
+//     }
+//
+//     try {
+//       tcpClient.write(data, encoding, (error) => {
+//         if (error) {
+//           reject({ success: false, message: `Failed to send data: ${error.message}` })
+//         } else {
+//           resolve({ success: true, message: 'Data sent successfully' })
+//         }
+//       })
+//     } catch (error) {
+//       reject({ success: false, message: `Error sending data: ${error.message}` })
+//     }
+//
+//
+//   })
+// })
+//
+//
+// ipcMain.handle('tcp:disconnect', async () => {
+//   if (tcpClient) {
+//     try { tcpClient.end(); tcpClient.destroy(); } catch {}
+//     tcpClient = null
+//   }
+//   // emitStatus('Disconnected')
+//   return { ok: true }
+// })
+//
 
 // ipcMain.handle('disconnect-tcp', async () => {
 //   return new Promise((resolve) => {
@@ -314,3 +333,23 @@ ipcMain.handle('tcp:disconnect', async () => {
 //   const raw = await fss.readFile(fp, 'utf-8')
 //   return YAML.parse(raw)
 // }
+
+
+// / function getConfigDir(): string {
+//   if (process.env.VITE_DEV_SERVER_URL) {
+//     // Development mode - load from project directory
+//     return path.join(process.cwd(), 'config')
+//   }
+//   // Production mode - load from resources
+//   return path.join(process.resourcesPath, 'config')
+// }
+
+// function loadConfig(): AppConfig {
+//   const cfgDir = configPath()
+//   const p = path.join(cfgDir, 'app.yaml')
+//   const yml = fs.readFileSync(p, 'utf-8')
+//   return YAML.parse(yml) as AppConfig
+// }
+
+// let client: TcpClient | null = null
+// let cfg: AppConfig

@@ -11,7 +11,7 @@ export default function MessageForm({ isConnected, onSend, isLoading = false }: 
 
   const handleSend = () => {
     if (!message.trim()) return
-    onSend(message)
+    onSend( 'utf8', message)
     setMessage('') // clear after sending
   }
 

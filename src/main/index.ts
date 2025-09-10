@@ -4,6 +4,8 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { TcpClient } from './TcpClient'
 import { TcpManager } from './TcpManager'
+import { decodeMessage, encodeMessage } from './serializer'
+// import {} from ./serializer;
 
 
 let mainWindow: BrowserWindow | null = null
@@ -123,6 +125,30 @@ ipcMain.handle('tcp:destroy', async (_evt, { id }) => {
   tcpManager.destroy(id)
   return { ok: true }
 })
+
+
+
+
+const payload = {
+  ACNT_NO: '123456789012',
+  ISIN: 'KR7005930003',
+  SIDE: 'B',
+  ORD_TYPE: 'L',
+  QTY: '100',
+  PRICE: '12345',
+  TIF: 'DAY',
+  SHORT_CD: '0',
+  CL_ORD_ID: 'ORDER12345',
+}
+
+//encode
+const { frame } = encodeMessage('NEW_ORDER', payload)
+
+console.log(frame)
+
+//decode
+const { payload: decoded } = decodeMessage('NEW_ORDER', frame)
+console.log(decoded)
 
 
 // ipcMain.handle('connect-tcp', async (_event, { host, port }) => {

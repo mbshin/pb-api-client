@@ -1,16 +1,28 @@
 // src/components/TcpPanelModern.tsx
-import React, { useState } from 'react'
+import React, { ReactNode, useState } from 'react'
 import StatusBadge from './StatusBadge'
 import { useTcpClient } from '../hooks/useTcpClient'
 import LogPanelModern from './LogPanelModern'
 
+
+type Props = {
+  title: string
+  defaultHost?: string
+  defaultPort?: number
+  children?: (opts: {
+    status: 'Disconnected' | 'Connecting' | 'Connected'
+    send: (mode: 'utf8' | 'hex', data: string) => Promise<any>
+  }) => ReactNode
+}
+
 export default function TcpPanelModern({
                                          title,
                                          defaultHost = '127.0.0.1',
-                                         defaultPort = 8080
-                                       }: {
-  title: string; defaultHost?: string; defaultPort?: number
-}) {
+                                         defaultPort = 0,
+                                         children
+                                       }:
+  Props
+) {
   const { status, connect, disconnect, send, messages, clear } = useTcpClient()
   const [host, setHost] = useState(defaultHost)
   const [port, setPort] = useState(String(defaultPort))
@@ -128,6 +140,13 @@ export default function TcpPanelModern({
             </button>
           </div>
         </div>
+
+        {/* Extra children (like OrderForm) */}
+        {children && (
+          <div className="px-4 pb-4">
+            {children({ status, send })}
+          </div>
+        )}
 
         {/* Log */}
         <LogPanelModern items={messages} onClear={clear} />

@@ -24,7 +24,9 @@ export default function App() {
   }
 
   useEffect(() => {
-    let offStatus = () => {}, offData = () => {}, offClosed = () => {}
+    let offStatus = () => {},
+      offData = () => {},
+      offClosed = () => {}
 
     ;(async () => {
       // 1) Create a TCP client in main and get its id
@@ -48,7 +50,9 @@ export default function App() {
 
     // 3) Cleanup on unmount
     return () => {
-      offStatus(); offData(); offClosed()
+      offStatus()
+      offData()
+      offClosed()
       const id = clientIdRef.current
       if (id != null) {
         window.tcp.destroy(id)
@@ -94,11 +98,27 @@ export default function App() {
     }
   }
 
-  return (
 
+
+  return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 dark:from-gray-950 dark:to-gray-900 p-4 lg:p-6">
       <div className="mx-auto max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <TcpPanelModern title="Order Port" defaultPort={8080} />
+
+          <TcpPanelModern title="Order Channel" defaultPort={8080}>
+            {({ status, send }) => (
+              <OrderForm
+                disabled={status !== 'Connected'}
+                onSent={async (type, payload) => {
+                  console.log(payload)
+                /*  const { hexFrame } = encodeMessage(type, payload, {
+                    scalers: { PRICE: 100, NEW_PRICE: 100 }
+                  })*/
+                   await send('utf8', JSON.stringify(payload, null, 2))
+                }}
+              />
+            )}
+          </TcpPanelModern>
+
         <TcpPanelModern title="Execution Port" defaultPort={8081} />
       </div>
     </div>

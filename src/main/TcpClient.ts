@@ -52,7 +52,7 @@ export class TcpClient extends EventEmitter {
       sock.setNoDelay(true)
 
       sock.connect(port, host, () => {
-        this.socket = sock
+        this.socket = sock``
         this.setStatus('Connected', `${host}:${port}`)
         resolve({ ok: true, message: `Connected to ${host}:${port}` })
       })
